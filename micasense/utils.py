@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 import cv2
+import math
 import numpy as np
 
 
@@ -76,35 +77,89 @@ def raw_image_to_radiance(meta, imageRaw):
     return radianceImage.T, L.T, V.T, R.T
 
 
+def build_powers_coefficients(powers, coefficients):
+    '''
+    :return: List of tuples of the form (n, m, coefficient)
+    Function inserted for RedEdge-P data
+    '''
+    powers_coefficients = []
+
+    power_items = powers.split(',')
+    coefficient_items = coefficients.split(',')
+
+    for i in range(0, len(power_items), 2):
+        powers_coefficients.append((int(power_items[i]), int(power_items[i+1]), float(coefficient_items[int(i/2)])))
+
+    return powers_coefficients
+
+
+
+def vignetting(powers_coefficients, x, y):
+    '''
+    Function inserted for RedEdge-P data
+    '''
+    value = 0.0
+
+    for entry in powers_coefficients:
+        value = value + entry[2] * math.pow(x, entry[0]) * math.pow(y, entry[1])
+
+    return value
+
+
+# def vignette_map(meta, xDim, yDim):
+#     # get vignette center
+#     xVignette = float(meta.get_item('XMP:VignettingCenter', 0))
+#     yVignette = float(meta.get_item('XMP:VignettingCenter', 1))
+
+#     # get vignette polynomial
+#     NvignettePoly = meta.size('XMP:VignettingPolynomial')
+#     vignettePolyList = [float(meta.get_item('XMP:VignettingPolynomial', i)) for i in range(NvignettePoly)]
+
+#     # reverse list and append 1., so that we can call with numpy polyval
+#     vignettePolyList.reverse()
+#     vignettePolyList.append(1.)
+#     vignettePoly = np.array(vignettePolyList)
+
+#     # perform vignette correction
+#     # get coordinate grid across image
+#     x, y = np.meshgrid(np.arange(xDim), np.arange(yDim))
+
+#     # meshgrid returns transposed arrays
+#     x = x.T
+#     y = y.T
+
+#     # compute matrix of distances from image center
+#     r = np.hypot((x - xVignette), (y - yVignette))
+
+#     # compute the vignette polynomial for each distance - we divide by the polynomial so that the
+#     # corrected image is image_corrected = image_original * vignetteCorrection
+#     vignette = 1. / np.polyval(vignettePoly, r)
+#     return vignette, x, y
+
+
 def vignette_map(meta, xDim, yDim):
-    # get vignette center
-    xVignette = float(meta.get_item('XMP:VignettingCenter', 0))
-    yVignette = float(meta.get_item('XMP:VignettingCenter', 1))
 
-    # get vignette polynomial
-    NvignettePoly = meta.size('XMP:VignettingPolynomial')
-    vignettePolyList = [float(meta.get_item('XMP:VignettingPolynomial', i)) for i in range(NvignettePoly)]
+    polynomial2DName = meta.get_item('XMP:VignettingPolynomial2DName')
+    polynomial2D = meta.get_item('XMP:VignettingPolynomial2D')
 
-    # reverse list and append 1., so that we can call with numpy polyval
-    vignettePolyList.reverse()
-    vignettePolyList.append(1.)
-    vignettePoly = np.array(vignettePolyList)
+    poly = build_powers_coefficients(polynomial2DName, polynomial2D)
 
-    # perform vignette correction
-    # get coordinate grid across image
-    x, y = np.meshgrid(np.arange(xDim), np.arange(yDim))
+    vignette_factor = np.ones((xDim, yDim), dtype=np.float32)
+    
+    coord_grid_x, coord_grid_y = np.meshgrid(np.arange(xDim), np.arange(yDim))
 
-    # meshgrid returns transposed arrays
-    x = x.T
-    y = y.T
+    coord_grid_x = coord_grid_x.T
+    coord_grid_y = coord_grid_y.T
 
-    # compute matrix of distances from image center
-    r = np.hypot((x - xVignette), (y - yVignette))
+    for y in range(0, xDim):
+        for x in range(0, yDim):
+            #TODO Verificar se yDim e xDim não estão trocados.
+            vignette_factor[y, x] = vignetting(poly, x/yDim, y/xDim)
 
-    # compute the vignette polynomial for each distance - we divide by the polynomial so that the
-    # corrected image is image_corrected = image_original * vignetteCorrection
-    vignette = 1. / np.polyval(vignettePoly, r)
-    return vignette, x, y
+    # TODO Confirmar se a operação é para vinheta comum (multiplicação) ou reversa (divisão)
+    # corrected_image = imageRaw * vignette_factor
+
+    return vignette_factor, coord_grid_x, coord_grid_y#, corrected_image
 
 
 def focal_plane_resolution_px_per_mm(meta):
