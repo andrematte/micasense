@@ -316,39 +316,93 @@ class Image(object):
         self.__radiance_image = radiance_image.T
         return self.__radiance_image
 
-    def vignette(self):
-        ''' Get a numpy array which defines the value to multiply each pixel by to correct
-        for optical vignetting effects.
-        Note: this array is transposed from normal image orientation and comes as part
-        of a three-tuple, the other parts of which are also used by the radiance method.
+#     def vignette(self):
+#         ''' Get a numpy array which defines the value to multiply each pixel by to correct
+#         for optical vignetting effects.
+#         Note: this array is transposed from normal image orientation and comes as part
+#         of a three-tuple, the other parts of which are also used by the radiance method.
+#         '''
+#         # get vignette center
+#         vignette_center_x, vignette_center_y = self.vignette_center
+
+#         # get a copy of the vignette polynomial because we want to modify it here
+#         v_poly_list = list(self.vignette_polynomial)
+
+#         # reverse list and append 1., so that we can call with numpy polyval
+#         v_poly_list.reverse()
+#         v_poly_list.append(1.)
+#         v_polynomial = np.array(v_poly_list)
+
+#         # perform vignette correction
+#         # get coordinate grid across image, seem swapped because of transposed vignette
+#         x_dim, y_dim = self.raw().shape[1], self.raw().shape[0]
+#         x, y = np.meshgrid(np.arange(x_dim), np.arange(y_dim))
+
+#         #meshgrid returns transposed arrays
+#         x = x.T
+#         y = y.T
+
+#         # compute matrix of distances from image center
+#         r = np.hypot((x-vignette_center_x), (y-vignette_center_y))
+
+#         # compute the vignette polynomial for each distance - we divide by the polynomial so that the
+#         # corrected image is image_corrected = image_original * vignetteCorrection
+#         vignette = 1./np.polyval(v_polynomial, r)
+#         return vignette, x, y
+    
+    
+    def build_powers_coefficients(self, powers, coefficients):
         '''
-        # get vignette center
-        vignette_center_x, vignette_center_y = self.vignette_center
+        :return: List of tuples of the form (n, m, coefficient)
+        Function inserted for RedEdge-P data
+        '''
+        powers_coefficients = []
 
-        # get a copy of the vignette polynomial because we want to modify it here
-        v_poly_list = list(self.vignette_polynomial)
+        power_items = powers.split(',')
+        coefficient_items = coefficients.split(',')
 
-        # reverse list and append 1., so that we can call with numpy polyval
-        v_poly_list.reverse()
-        v_poly_list.append(1.)
-        v_polynomial = np.array(v_poly_list)
+        for i in range(0, len(power_items), 2):
+            powers_coefficients.append((int(power_items[i]), int(power_items[i+1]), float(coefficient_items[int(i/2)])))
 
-        # perform vignette correction
-        # get coordinate grid across image, seem swapped because of transposed vignette
-        x_dim, y_dim = self.raw().shape[1], self.raw().shape[0]
-        x, y = np.meshgrid(np.arange(x_dim), np.arange(y_dim))
+        return powers_coefficients
 
-        #meshgrid returns transposed arrays
-        x = x.T
-        y = y.T
 
-        # compute matrix of distances from image center
-        r = np.hypot((x-vignette_center_x), (y-vignette_center_y))
 
-        # compute the vignette polynomial for each distance - we divide by the polynomial so that the
-        # corrected image is image_corrected = image_original * vignetteCorrection
-        vignette = 1./np.polyval(v_polynomial, r)
-        return vignette, x, y
+    def vignetting(self, powers_coefficients, x, y):
+        '''
+        Function inserted for RedEdge-P data
+        '''
+        value = 0.0
+
+        for entry in powers_coefficients:
+            value = value + entry[2] * math.pow(x, entry[0]) * math.pow(y, entry[1])
+
+        return value
+    
+    def vignette(self):
+
+        polynomial2DName = self.meta.get_item('XMP:VignettingPolynomial2DName')
+        polynomial2D = self.meta.get_item('XMP:VignettingPolynomial2D')
+
+        poly = self.build_powers_coefficients(polynomial2DName, polynomial2D)
+
+        xDim, yDim = self.raw().shape[1], self.raw().shape[0]
+        vignette_factor = np.ones((xDim, yDim), dtype=np.float32)
+
+        coord_grid_x, coord_grid_y = np.meshgrid(np.arange(xDim), np.arange(yDim))
+
+        coord_grid_x = coord_grid_x.T
+        coord_grid_y = coord_grid_y.T
+
+        for y in range(0, xDim):
+            for x in range(0, yDim):
+                vignette_factor[y, x] = self.vignetting(poly, x/yDim, y/xDim)
+
+        # TODO Confirmar se a operação é para vinheta comum (multiplicação) ou reversa (divisão)
+        # corrected_image = imageRaw * vignette_factor
+
+        return 1./vignette_factor, coord_grid_x, coord_grid_y
+
 
     def undistorted_radiance(self, force_recompute=False):
         return self.undistorted(self.radiance(force_recompute))
