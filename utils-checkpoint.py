@@ -62,7 +62,7 @@ def raw_image_to_radiance(meta, imageRaw):
     # Floor any negative radiances to zero (can happend due to noise around blackLevel)
     L[L < 0] = 0
 
-    # L = np.round(L).astype(np.uint16)
+    L = np.round(L).astype(np.uint16)
 
     # apply the radiometric calibration - i.e. scale by the gain-exposure product and
     # multiply with the radiometric calibration coefficient
