@@ -4,7 +4,7 @@
 from setuptools import find_packages, setup
 
 # Parse the version from the main __init__.py
-with open('micasense/__init__.py') as f:
+with open('__init__.py') as f:
     for line in f:
         if line.find("__version__") >= 0:
             version = line.split("=")[1].strip()
@@ -14,10 +14,9 @@ with open('micasense/__init__.py') as f:
 
 setup(name='micasense',
       version=version,
-      description=u"Micasense Image Processing",
-      author=u"MicaSense, Inc.",
-      author_email='github@micasense.com',
-      url='https://github.com/micasense/imageprocessing',
+      description=u"Micasense Image Processing, altered by GitHub user andrematte to use with RedEdge-P sensor data",
+      author=u"MicaSense, Inc. - adapted by andrematte",
+      url='https://github.com/andrematte/micasense',
       license='MIT',
       packages=find_packages(),
       install_requires=[
