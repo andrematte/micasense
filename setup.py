@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # Parse the version from the main __init__.py
 with open('micasense/__init__.py') as f:
@@ -24,7 +24,6 @@ setup(name='micasense',
           'requests',
           'numpy',
           'opencv-python',
-          'gdal',
           'pysolar',
           'matplotlib',
           'scikit-image',
