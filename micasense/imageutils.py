@@ -23,14 +23,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-import cv2
-import os
-import numpy as np
 import multiprocessing
+import os
+
+import cv2
+import numpy as np
 from skimage import exposure
+from skimage.filters import gaussian, rank
 from skimage.morphology import disk
-from skimage.filters import rank, gaussian
 from skimage.util import img_as_ubyte
+
 
 def normalize(im, min=None, max=None):
     width, height = im.shape
@@ -232,7 +234,7 @@ def align_capture(capture, ref_index=1, warp_mode=cv2.MOTION_HOMOGRAPHY, max_ite
         pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
         for _,mat in enumerate(pool.imap_unordered(align, alignment_pairs)):
             warp_matrices[mat['match_index']] = mat['warp_matrix']
-            print("Finished aligning band {}".format(mat['match_index']))
+            # print("Finished aligning band {}".format(mat['match_index']))
         pool.close()
         pool.join()
     else:
@@ -240,7 +242,7 @@ def align_capture(capture, ref_index=1, warp_mode=cv2.MOTION_HOMOGRAPHY, max_ite
         for pair in alignment_pairs:
             mat = align(pair)
             warp_matrices[mat['match_index']] = mat['warp_matrix']
-            print("Finished aligning band {}".format(mat['match_index']))
+            # print("Finished aligning band {}".format(mat['match_index']))
 
     if capture.images[-1].band_name == 'LWIR':
         img = capture.images[-1]
