@@ -1,3 +1,7 @@
+This forked repository code is being adapted to work with the Micasense RedEdge-P multispectral camera.
+
+Below is the original README file:
+
 [![Build Status](https://travis-ci.org/micasense/imageprocessing.svg?branch=master)](https://travis-ci.org/micasense/imageprocessing)
 
 ## MicaSense RedEdge and Altum Image Processing Tutorials
