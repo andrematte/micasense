@@ -52,7 +52,8 @@ def local_normalize(im):
     if disksize % 2 == 0:
         disksize = disksize + 1
     selem = disk(disksize)
-    norm2 = rank.equalize(norm, selem=selem)
+    #norm2 = rank.equalize(norm, selem=selem) Selem is deprecated, using footprint instead
+    norm2 = rank.equalize(norm, footprint=selem)
     return norm2
 
 def gradient(im, ksize=5):
